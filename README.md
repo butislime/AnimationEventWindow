@@ -1,0 +1,2 @@
+# AnimationEventWindow
+UnityのAnimationEventを設定するウィンドウ
