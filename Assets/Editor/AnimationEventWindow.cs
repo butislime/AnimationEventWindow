@@ -7,93 +7,141 @@ using System.Linq;
 
 public class AnimationEventWindow : EditorWindow
 {
-	AnimationClip animClip;
-	GameObject rootObject;
-	int eventIndex;
+	AnimationClip AnimClip;
+	GameObject RootObject;
+	int EventIndex;
+
+	string FunctionSearchText;
+
+	[MenuItem("Edit/close")]
+	static void close()
+	{
+		var windows = Resources.FindObjectsOfTypeAll(typeof(EditorWindow)) as EditorWindow[];
+		foreach(var w in windows)
+		{
+			var winType = w.GetType();
+			if(winType.ToString().Contains("AnimationEventWindow")) w.Close();
+		}
+	}
 
 	void OnGUI()
 	{
-		var callable_methods = new List<MethodInfo>();
-		var scripts = rootObject.GetComponents<MonoBehaviour>();
+		if(RootObject == null) return;
+
+		// EditorGUILayout.BeginHorizontal();
+		// {
+			// FunctionSearchText = EditorGUILayout.TextField("検索", FunctionSearchText, (GUIStyle)"SearchTextField");
+			// if(GUILayout.Button(string.Empty, (GUIStyle)"SearchCancelButton"))
+			// {
+				// FunctionSearchText = string.Empty;
+			// }
+		// }
+		// EditorGUILayout.EndHorizontal();
+		FunctionSearchText = EditorGUILayout.TextField("検索", FunctionSearchText);
+
+		var callableMethods = new List<MethodInfo>();
+		var scripts = RootObject.GetComponents<MonoBehaviour>();
 		foreach(var script in scripts)
 		{
 			var methods = script.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.Instance);
 			foreach(var method in methods)
 			{
-				AddCallableMethod(callable_methods, method);
+				AddCallableMethod(callableMethods, method);
 			}
 		}
+		if(string.IsNullOrEmpty(FunctionSearchText) == false)
+		{
+			callableMethods = callableMethods.Where(method => method.Name.Contains(FunctionSearchText)).ToList();
+		}
+		callableMethods = callableMethods.OrderBy(method => method.Name).ToList();
 
-		var anim_events = AnimationUtility.GetAnimationEvents(animClip);
-		var anim_event = anim_events[eventIndex];
-		var func_idx = 0;
-		if(string.IsNullOrEmpty(anim_event.functionName) == false) func_idx = callable_methods.FindIndex(method => method.Name == anim_event.functionName);
-		func_idx = EditorGUILayout.Popup(func_idx, callable_methods.Select(method => FormatCallableMethodName(method)).ToArray());
-		anim_event.functionName = callable_methods[func_idx].Name;
+		var animEvents = AnimationUtility.GetAnimationEvents(AnimClip);
+		var animEvent = animEvents[EventIndex];
+		var funcIdx = 0;
+		if(string.IsNullOrEmpty(animEvent.functionName) == false) funcIdx = callableMethods.FindIndex(method => method.Name == animEvent.functionName);
+		funcIdx = EditorGUILayout.Popup(funcIdx, callableMethods.Select(method => FormatCallableMethodName(method)).ToArray());
+		if(funcIdx >= 0 && funcIdx < callableMethods.Count)
+		{
+			animEvent.functionName = callableMethods[funcIdx].Name;
 
-		ShowParameter(anim_event, callable_methods[func_idx]);
+			ShowParameter(animEvent, callableMethods[funcIdx]);
+		}
 
-		AnimationUtility.SetAnimationEvents(animClip, anim_events);
+		AnimationUtility.SetAnimationEvents(AnimClip, animEvents);
 	}
 
-	void ShowParameter(AnimationEvent anim_event, MethodInfo method_info)
+	void ShowParameter(AnimationEvent animEvent, MethodInfo methodInfo)
 	{
-		if(method_info.GetParameters().Length == 0) return;
+		if(methodInfo.GetParameters().Length == 0) return;
 		EditorGUILayout.Space();
 		EditorGUILayout.LabelField("Parameters");
-		switch(method_info.GetParameters()[0].ParameterType.ToString())
+		switch(methodInfo.GetParameters()[0].ParameterType.Name)
 		{
-			case "System.Int32":
-				anim_event.intParameter = EditorGUILayout.IntField("Int", anim_event.intParameter);
+			case "Int32":
+				animEvent.intParameter = EditorGUILayout.IntField("整数", animEvent.intParameter);
 				break;
-			case "System.Single":
-				anim_event.floatParameter = EditorGUILayout.FloatField("Float", anim_event.floatParameter);
+			case "Single":
+				animEvent.floatParameter = EditorGUILayout.FloatField("数値(小数点)", animEvent.floatParameter);
 				break;
-			case "System.String":
-				anim_event.stringParameter = EditorGUILayout.TextField("String", anim_event.stringParameter);
+			case "String":
+				animEvent.stringParameter = EditorGUILayout.TextField("文字列", animEvent.stringParameter);
 				break;
-			case "UnityEngine.Object":
-				anim_event.objectReferenceParameter = EditorGUILayout.ObjectField("Object", anim_event.objectReferenceParameter, typeof(UnityEngine.Object));
+			case "Object":
+				animEvent.objectReferenceParameter = EditorGUILayout.ObjectField("Object", animEvent.objectReferenceParameter, typeof(UnityEngine.Object), true);
 				break;
 			default:
-				var select_idx = 0;
-				var enum_values = Enum.GetValues(method_info.GetParameters()[0].ParameterType);
-				for(int enum_idx = 0; enum_idx < enum_values.Length; ++enum_idx)
+				var selectIdx = 0;
+				var enumValues = Enum.GetValues(methodInfo.GetParameters()[0].ParameterType);
+				for(int enumIdx = 0; enumIdx < enumValues.Length; ++enumIdx)
 				{
-					if((int)enum_values.GetValue(enum_idx) == anim_event.intParameter) select_idx = enum_idx;
+					if((int)enumValues.GetValue(enumIdx) == animEvent.intParameter) selectIdx = enumIdx;
 				}
-				select_idx = EditorGUILayout.Popup("Enum", select_idx, Enum.GetNames(method_info.GetParameters()[0].ParameterType));
-				anim_event.intParameter = (int)enum_values.GetValue(select_idx);
+				selectIdx = EditorGUILayout.Popup("Enum", selectIdx, Enum.GetNames(methodInfo.GetParameters()[0].ParameterType));
+				animEvent.intParameter = (int)enumValues.GetValue(selectIdx);
 				break;
 		}
 	}
 
-	void AddCallableMethod(List<MethodInfo> callable_methods, MethodInfo method_info)
+	void AddCallableMethod(List<MethodInfo> callableMethods, MethodInfo methodInfo)
 	{
-		if(method_info == null) return;
-		var mono_methods = typeof(MonoBehaviour).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.Instance);
-		if(mono_methods.Any(method => method.Name == method_info.Name)) return;
-		var ignore_funcs = new string[] {
+		if(methodInfo == null) return;
+		if(methodInfo.IsSpecialName) return;
+		var monoMethods = typeof(MonoBehaviour).GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.Instance);
+		if(monoMethods.Any(method => method.Name == methodInfo.Name)) return;
+		var ignoreFuncs = new string[] {
 			"Awake",
 			"Start",
 			"Update",
 		};
-		if(ignore_funcs.Any(func_name => func_name == method_info.Name)) return;
-		if(method_info.GetParameters().Length > 1) return;
-		// TODO : int, float, string, Object以外のパラメータは弾く
-		if(callable_methods.Any(method => method.Name == method_info.Name))
+		if(ignoreFuncs.Any(func_name => func_name == methodInfo.Name)) return;
+		var parameters = methodInfo.GetParameters();
+		if(parameters.Length > 1) return;
+		if(parameters.Length == 1)
 		{
-			callable_methods.RemoveAll(method => method.Name == method_info.Name);
+			if(parameters[0].ParameterType.IsEnum == false)
+			{
+				var availableParamNames = new string[] {
+					"Single",
+					"Int32",
+					"String",
+					"Object",
+				};
+				if(availableParamNames.Any(name => name == parameters[0].ParameterType.Name) == false) return;
+			}
+		}
+		if(callableMethods.Any(method => method.Name == methodInfo.Name))
+		{
+			callableMethods.RemoveAll(method => method.Name == methodInfo.Name);
 			return;
 		}
 
-		callable_methods.Add(method_info);
+		callableMethods.Add(methodInfo);
 	}
 
-	string FormatCallableMethodName(MethodInfo method_info)
+	string FormatCallableMethodName(MethodInfo methodInfo)
 	{
-		if(method_info.GetParameters().Length == 0) return method_info.Name + "( )";
-		return method_info.Name + "( " + ConvertTypeName(method_info.GetParameters()[0].ParameterType.ToString()) + " )";
+		if(methodInfo.GetParameters().Length == 0) return methodInfo.Name + "( )";
+		return methodInfo.Name + "( " + ConvertTypeName(methodInfo.GetParameters()[0].ParameterType.ToString()) + " )";
 	}
 
 	string ConvertTypeName(string before_type_name)
@@ -119,21 +167,21 @@ public class AnimationEventWindow : EditorWindow
 		var windows = Resources.FindObjectsOfTypeAll(typeof(EditorWindow)) as EditorWindow[];
 		foreach(var w in windows)
 		{
-			var win_type = w.GetType();
-			if(win_type.ToString().Contains("AnimationEventPopup") == false) continue;
+			var winType = w.GetType();
+			if(winType.ToString().Contains("AnimationEventPopup") == false) continue;
 
-			var anim_clip_field = win_type.GetField("m_Clip", BindingFlags.NonPublic | BindingFlags.Instance);
-			var root_obj_field = win_type.GetField("m_Root", BindingFlags.NonPublic | BindingFlags.Instance);
-			var event_idx_field = win_type.GetField("m_EventIndex", BindingFlags.NonPublic | BindingFlags.Instance);
+			var animClipField = winType.GetField("m_Clip", BindingFlags.NonPublic | BindingFlags.Instance);
+			var rootObjField = winType.GetField("m_Root", BindingFlags.NonPublic | BindingFlags.Instance);
+			var eventIdxField = winType.GetField("m_EventIndex", BindingFlags.NonPublic | BindingFlags.Instance);
 
 			w.Close();
 
-			var window = EditorWindow.GetWindow(typeof(AnimationEventWindow)) as AnimationEventWindow;
-			window.animClip = anim_clip_field.GetValue(w) as AnimationClip;
-			window.rootObject = root_obj_field.GetValue(w) as GameObject;
-			window.eventIndex = (int)event_idx_field.GetValue(w);
+			var animEventWin = EditorWindow.GetWindow(typeof(AnimationEventWindow)) as AnimationEventWindow;
+			animEventWin.AnimClip = animClipField.GetValue(w) as AnimationClip;
+			animEventWin.RootObject = rootObjField.GetValue(w) as GameObject;
+			animEventWin.EventIndex = (int)eventIdxField.GetValue(w);
 
-			window.Show();
+			animEventWin.Show();
 		}
 	}
 }
