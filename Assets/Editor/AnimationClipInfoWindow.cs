@@ -60,7 +60,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			EditorGUILayout.LabelField((eventInfo.time / framePerSec).ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(eventInfo.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(eventInfo.floatParameter.ToString(), GUILayout.MaxWidth(100));
-			EditorGUILayout.LabelField(eventInfo.stringParameter.ToString());
+			GUILayout.Label(eventInfo.stringParameter.ToString());
 			EditorGUILayout.EndHorizontal();
 		}
 		if(EventInfoInCopy != null)
@@ -74,7 +74,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			EditorGUILayout.LabelField((EventInfoInCopy.time / framePerSec).ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
-			EditorGUILayout.LabelField(EventInfoInCopy.stringParameter.ToString());
+			GUILayout.Label(EventInfoInCopy.stringParameter.ToString());
 			EditorGUILayout.EndHorizontal();
 		}
 		EditorGUILayout.EndScrollView();

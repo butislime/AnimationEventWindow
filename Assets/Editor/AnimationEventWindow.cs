@@ -11,17 +11,22 @@ public class AnimationEventWindow : EditorWindow
 	GameObject RootObject;
 	int EventIndex;
 
+	List<MethodInfo> CallableMethods = new List<MethodInfo>();
 	string FunctionSearchText;
 
-	[MenuItem("Edit/close")]
-	static void close()
+	public void UpdateCallableMethodList()
 	{
-		var windows = Resources.FindObjectsOfTypeAll(typeof(EditorWindow)) as EditorWindow[];
-		foreach(var w in windows)
+		CallableMethods.Clear();
+		var scripts = RootObject.GetComponents<MonoBehaviour>();
+		foreach(var script in scripts)
 		{
-			var winType = w.GetType();
-			if(winType.ToString().Contains("AnimationEventWindow")) w.Close();
+			var methods = script.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.Instance);
+			foreach(var method in methods)
+			{
+				AddCallableMethod(CallableMethods, method);
+			}
 		}
+		CallableMethods = CallableMethods.OrderBy(method => method.Name).ToList();
 	}
 
 	void OnGUI()
@@ -38,33 +43,30 @@ public class AnimationEventWindow : EditorWindow
 		// }
 		// EditorGUILayout.EndHorizontal();
 		FunctionSearchText = EditorGUILayout.TextField("検索", FunctionSearchText);
-
-		var callableMethods = new List<MethodInfo>();
-		var scripts = RootObject.GetComponents<MonoBehaviour>();
-		foreach(var script in scripts)
-		{
-			var methods = script.GetType().GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.InvokeMethod | BindingFlags.Instance);
-			foreach(var method in methods)
-			{
-				AddCallableMethod(callableMethods, method);
-			}
-		}
+		var targetMethods = new List<MethodInfo>(CallableMethods);
 		if(string.IsNullOrEmpty(FunctionSearchText) == false)
 		{
-			callableMethods = callableMethods.Where(method => method.Name.Contains(FunctionSearchText)).ToList();
+			targetMethods = targetMethods.Where(method => method.Name.ToLower().Contains(FunctionSearchText.ToLower())).ToList();
 		}
-		callableMethods = callableMethods.OrderBy(method => method.Name).ToList();
 
 		var animEvents = AnimationUtility.GetAnimationEvents(AnimClip);
 		var animEvent = animEvents[EventIndex];
 		var funcIdx = 0;
-		if(string.IsNullOrEmpty(animEvent.functionName) == false) funcIdx = callableMethods.FindIndex(method => method.Name == animEvent.functionName);
-		funcIdx = EditorGUILayout.Popup(funcIdx, callableMethods.Select(method => FormatCallableMethodName(method)).ToArray());
-		if(funcIdx >= 0 && funcIdx < callableMethods.Count)
+		if(string.IsNullOrEmpty(animEvent.functionName) == false) funcIdx = targetMethods.FindIndex(method => method.Name == animEvent.functionName);
+		var selectFuncIdx = EditorGUILayout.Popup(funcIdx, targetMethods.Select(method => FormatCallableMethodName(method)).ToArray());
+		// 関数が変わったら、パラメータ初期化
+		if(funcIdx != selectFuncIdx)
 		{
-			animEvent.functionName = callableMethods[funcIdx].Name;
-
-			ShowParameter(animEvent, callableMethods[funcIdx]);
+			animEvent.intParameter = 0;
+			animEvent.floatParameter = 0.0f;
+			animEvent.stringParameter = string.Empty;
+			animEvent.objectReferenceParameter = null;
+			funcIdx = selectFuncIdx;
+		}
+		if(funcIdx >= 0 && funcIdx < targetMethods.Count)
+		{
+			animEvent.functionName = targetMethods[funcIdx].Name;
+			ShowParameter(animEvent, targetMethods[funcIdx]);
 		}
 
 		AnimationUtility.SetAnimationEvents(AnimClip, animEvents);
@@ -180,6 +182,8 @@ public class AnimationEventWindow : EditorWindow
 			animEventWin.AnimClip = animClipField.GetValue(w) as AnimationClip;
 			animEventWin.RootObject = rootObjField.GetValue(w) as GameObject;
 			animEventWin.EventIndex = (int)eventIdxField.GetValue(w);
+
+			animEventWin.UpdateCallableMethodList();
 
 			animEventWin.Show();
 		}
