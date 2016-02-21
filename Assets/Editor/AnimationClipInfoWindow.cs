@@ -16,6 +16,11 @@ public class AnimationClipInfoWindow : EditorWindow
 		EditorWindow.GetWindow<AnimationClipInfoWindow>();
 	}
 
+	AnimationClipInfoWindow()
+	{
+		Undo.undoRedoPerformed += OnUndoCallback;
+	}
+
 	void OnGUI()
 	{
 		if(Selection.objects.Length == 0) return;
@@ -45,6 +50,8 @@ public class AnimationClipInfoWindow : EditorWindow
 			{
 				if(EventInfoInCopy != null)
 				{
+					// Undo保存
+					Undo.RecordObject(clip, "copy event info");
 					eventInfo.functionName = EventInfoInCopy.functionName;
 					eventInfo.intParameter = EventInfoInCopy.intParameter;
 					eventInfo.floatParameter = EventInfoInCopy.floatParameter;
@@ -80,6 +87,10 @@ public class AnimationClipInfoWindow : EditorWindow
 		EditorGUILayout.EndScrollView();
 	}
 	void OnSelectionChange()
+	{
+		Repaint();
+	}
+	void OnUndoCallback()
 	{
 		Repaint();
 	}

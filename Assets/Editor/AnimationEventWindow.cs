@@ -42,7 +42,7 @@ public class AnimationEventWindow : EditorWindow
 			// }
 		// }
 		// EditorGUILayout.EndHorizontal();
-		FunctionSearchText = EditorGUILayout.TextField("検索", FunctionSearchText);
+		FunctionSearchText = EditorGUILayout.TextField("関数名検索", FunctionSearchText);
 		var targetMethods = new List<MethodInfo>(CallableMethods);
 		if(string.IsNullOrEmpty(FunctionSearchText) == false)
 		{
@@ -77,7 +77,8 @@ public class AnimationEventWindow : EditorWindow
 		if(methodInfo.GetParameters().Length == 0) return;
 		EditorGUILayout.Space();
 		EditorGUILayout.LabelField("Parameters");
-		switch(methodInfo.GetParameters()[0].ParameterType.Name)
+		var parameterType = methodInfo.GetParameters()[0].ParameterType;
+		switch(parameterType.Name)
 		{
 			case "Int32":
 				animEvent.intParameter = EditorGUILayout.IntField("整数", animEvent.intParameter);
@@ -93,13 +94,15 @@ public class AnimationEventWindow : EditorWindow
 				break;
 			default:
 				var selectIdx = 0;
-				var enumValues = Enum.GetValues(methodInfo.GetParameters()[0].ParameterType);
+				var enumValues = Enum.GetValues(parameterType);
 				for(int enumIdx = 0; enumIdx < enumValues.Length; ++enumIdx)
 				{
 					if((int)enumValues.GetValue(enumIdx) == animEvent.intParameter) selectIdx = enumIdx;
 				}
-				selectIdx = EditorGUILayout.Popup("Enum", selectIdx, Enum.GetNames(methodInfo.GetParameters()[0].ParameterType));
+				selectIdx = EditorGUILayout.Popup("Enum", selectIdx, Enum.GetNames(parameterType));
 				animEvent.intParameter = (int)enumValues.GetValue(selectIdx);
+				// var converter = new EnumConverter(MethodInfo.GetParameters()[0].ParameterType);
+				// animEvent.intParameter = EditorGUILayout.EnumPopup("Enum", converter.ConvertFrom(animEvent.intParameter));
 				break;
 		}
 	}
