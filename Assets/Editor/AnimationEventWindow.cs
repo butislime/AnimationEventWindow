@@ -14,6 +14,9 @@ public class AnimationEventWindow : EditorWindow
 	List<MethodInfo> CallableMethods = new List<MethodInfo>();
 	string FunctionSearchText;
 
+	/// <summary>
+	/// 現状の情報で呼び出し可能な関数を列挙する
+	/// </summary>
 	public void UpdateCallableMethodList()
 	{
 		CallableMethods.Clear();
@@ -32,6 +35,7 @@ public class AnimationEventWindow : EditorWindow
 	void OnGUI()
 	{
 		if(RootObject == null) return;
+		// if(Event.current.type != EventType.Repaint) return;
 
 		// EditorGUILayout.BeginHorizontal();
 		// {
@@ -69,9 +73,24 @@ public class AnimationEventWindow : EditorWindow
 			ShowParameter(animEvent, targetMethods[funcIdx]);
 		}
 
+		EditorGUILayout.BeginHorizontal();
+		if(GUILayout.Button("コピー"))
+		{
+			AnimationExtensionData.CopyEventInfo(fromEventInfo: animEvent);
+		}
+		if(GUILayout.Button("ペースト"))
+		{
+			Undo.RecordObject(AnimClip, "paste event info");
+			AnimationExtensionData.PasteEventInfo(toEventInfo: animEvent);
+		}
+		EditorGUILayout.EndHorizontal();
+
 		AnimationUtility.SetAnimationEvents(AnimClip, animEvents);
 	}
 
+	/// <summary>
+	/// イベントのパラメータ表示
+	/// </summary>
 	void ShowParameter(AnimationEvent animEvent, MethodInfo methodInfo)
 	{
 		if(methodInfo.GetParameters().Length == 0) return;
@@ -107,6 +126,10 @@ public class AnimationEventWindow : EditorWindow
 		}
 	}
 
+	/// <summary>
+	/// 呼び出し可能関数を追加する
+	/// 呼び出しできない場合は追加されない
+	/// </summary>
 	void AddCallableMethod(List<MethodInfo> callableMethods, MethodInfo methodInfo)
 	{
 		if(methodInfo == null) return;
@@ -143,12 +166,18 @@ public class AnimationEventWindow : EditorWindow
 		callableMethods.Add(methodInfo);
 	}
 
+	/// <summary>
+	/// 表示用に関数名をフォーマットする
+	/// </summary>
 	string FormatCallableMethodName(MethodInfo methodInfo)
 	{
 		if(methodInfo.GetParameters().Length == 0) return methodInfo.Name + "( )";
 		return methodInfo.Name + "( " + ConvertTypeName(methodInfo.GetParameters()[0].ParameterType.ToString()) + " )";
 	}
 
+	/// <summary>
+	/// 関数のパラメータの型名を見やすく変換する
+	/// </summary>
 	string ConvertTypeName(string before_type_name)
 	{
 		var conv_table = new Dictionary<string, string>() {

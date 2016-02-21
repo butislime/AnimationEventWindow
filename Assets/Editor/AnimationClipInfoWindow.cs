@@ -5,10 +5,35 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+static public class AnimationExtensionData
+{
+	static public AnimationEvent EventInfoInCopy;
+
+	/// <summary>
+	/// イベント情報のコピー
+	/// </summary>
+	static public void CopyEventInfo(AnimationEvent fromEventInfo)
+	{
+		if(fromEventInfo == null) return;
+		EventInfoInCopy = fromEventInfo;
+	}
+	/// <summary>
+	/// コピー中のイベントを引数のイベントに適用する
+	/// functionname,int,float,stringのみ
+	/// </summary>
+	static public void PasteEventInfo(AnimationEvent toEventInfo)
+	{
+		if(toEventInfo == null) return;
+		toEventInfo.functionName = EventInfoInCopy.functionName;
+		toEventInfo.intParameter = EventInfoInCopy.intParameter;
+		toEventInfo.floatParameter = EventInfoInCopy.floatParameter;
+		toEventInfo.stringParameter = EventInfoInCopy.stringParameter;
+	}
+}
+
 public class AnimationClipInfoWindow : EditorWindow
 {
 	Vector2 ScrollPos;
-	AnimationEvent EventInfoInCopy;
 
 	[MenuItem("Window/AnimationClip Window")]
 	static void OpenAnimationClipInfoWindow()
@@ -48,20 +73,17 @@ public class AnimationClipInfoWindow : EditorWindow
 			EditorGUILayout.BeginHorizontal(GUI.skin.box);
 			if(GUILayout.Button("P", GUILayout.Width(20)))
 			{
-				if(EventInfoInCopy != null)
+				if(AnimationExtensionData.EventInfoInCopy != null)
 				{
-					// Undo保存
-					Undo.RecordObject(clip, "copy event info");
-					eventInfo.functionName = EventInfoInCopy.functionName;
-					eventInfo.intParameter = EventInfoInCopy.intParameter;
-					eventInfo.floatParameter = EventInfoInCopy.floatParameter;
-					eventInfo.stringParameter = EventInfoInCopy.stringParameter;
+					Undo.RecordObject(clip, "paste event info");
+					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
 					AnimationUtility.SetAnimationEvents(clip, eventList);
 				}
 			}
 			if(GUILayout.Button("C", GUILayout.Width(20)))
 			{
-				EventInfoInCopy = eventInfo;
+				AnimationExtensionData.CopyEventInfo(fromEventInfo: eventInfo);
+				AnimationExtensionData.EventInfoInCopy = eventInfo;
 			}
 			EditorGUILayout.LabelField(string.IsNullOrEmpty(eventInfo.functionName) ? "(指定なし)" : eventInfo.functionName, GUILayout.MaxWidth(200));
 			EditorGUILayout.LabelField((eventInfo.time / framePerSec).ToString(), GUILayout.MaxWidth(100));
@@ -70,18 +92,18 @@ public class AnimationClipInfoWindow : EditorWindow
 			GUILayout.Label(eventInfo.stringParameter.ToString());
 			EditorGUILayout.EndHorizontal();
 		}
-		if(EventInfoInCopy != null)
+		if(AnimationExtensionData.EventInfoInCopy != null)
 		{
 			EditorGUILayout.Space();
 			EditorGUILayout.LabelField("コピー中イベント(関数名、整数値、数値(小数点)、文字列置き換え)");
 			EditorGUILayout.BeginHorizontal(GUI.skin.box);
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
-			EditorGUILayout.LabelField(string.IsNullOrEmpty(EventInfoInCopy.functionName) ? "(指定なし)" : EventInfoInCopy.functionName, GUILayout.MaxWidth(200));
-			EditorGUILayout.LabelField((EventInfoInCopy.time / framePerSec).ToString(), GUILayout.MaxWidth(100));
-			EditorGUILayout.LabelField(EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
-			EditorGUILayout.LabelField(EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
-			GUILayout.Label(EventInfoInCopy.stringParameter.ToString());
+			EditorGUILayout.LabelField(string.IsNullOrEmpty(AnimationExtensionData.EventInfoInCopy.functionName) ? "(指定なし)" : AnimationExtensionData.EventInfoInCopy.functionName, GUILayout.MaxWidth(200));
+			EditorGUILayout.LabelField((AnimationExtensionData.EventInfoInCopy.time / framePerSec).ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
+			GUILayout.Label(AnimationExtensionData.EventInfoInCopy.stringParameter.ToString());
 			EditorGUILayout.EndHorizontal();
 		}
 		EditorGUILayout.EndScrollView();
