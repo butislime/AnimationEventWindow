@@ -54,11 +54,20 @@ public class AnimationClipInfoWindow : EditorWindow
 		if(clip == null) return;
 
 		var framePerSec = 1 / clip.frameRate;
+		var events = AnimationUtility.GetAnimationEvents(clip);
 
 		ScrollPos = EditorGUILayout.BeginScrollView(ScrollPos);
 		EditorGUILayout.LabelField("イベントリスト");
 		EditorGUILayout.BeginHorizontal();
-		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
+		// 新規イベント追加
+		if(GUILayout.Button("+", GUILayout.Width(20)))
+		{
+			Undo.RecordObject(clip, "add new event info");
+			var eventList = events.ToList();
+			eventList.Add(new AnimationEvent());
+			events = eventList.OrderBy(event_info => event_info.time).ToArray();
+			AnimationUtility.SetAnimationEvents(clip, events);
+		}
 		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 		EditorGUILayout.LabelField("関数名", GUILayout.MaxWidth(200));
 		EditorGUILayout.LabelField("frame("+clip.frameRate+")", GUILayout.MaxWidth(100));
@@ -66,10 +75,9 @@ public class AnimationClipInfoWindow : EditorWindow
 		EditorGUILayout.LabelField("数値(小数点)", GUILayout.MaxWidth(100));
 		EditorGUILayout.LabelField("文字列");
 		EditorGUILayout.EndHorizontal();
-		var eventList = AnimationUtility.GetAnimationEvents(clip);
-		for(var eventIdx = 0; eventIdx < eventList.Length; ++eventIdx)
+		for(var eventIdx = 0; eventIdx < events.Length; ++eventIdx)
 		{
-			var eventInfo = eventList[eventIdx];
+			var eventInfo = events[eventIdx];
 			EditorGUILayout.BeginHorizontal(GUI.skin.box);
 			if(GUILayout.Button("P", GUILayout.Width(20)))
 			{
@@ -77,7 +85,7 @@ public class AnimationClipInfoWindow : EditorWindow
 				{
 					Undo.RecordObject(clip, "paste event info");
 					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
-					AnimationUtility.SetAnimationEvents(clip, eventList);
+					AnimationUtility.SetAnimationEvents(clip, events);
 				}
 			}
 			if(GUILayout.Button("C", GUILayout.Width(20)))

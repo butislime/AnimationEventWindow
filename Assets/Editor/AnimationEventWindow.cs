@@ -35,17 +35,6 @@ public class AnimationEventWindow : EditorWindow
 	void OnGUI()
 	{
 		if(RootObject == null) return;
-		// if(Event.current.type != EventType.Repaint) return;
-
-		// EditorGUILayout.BeginHorizontal();
-		// {
-			// FunctionSearchText = EditorGUILayout.TextField("検索", FunctionSearchText, (GUIStyle)"SearchTextField");
-			// if(GUILayout.Button(string.Empty, (GUIStyle)"SearchCancelButton"))
-			// {
-				// FunctionSearchText = string.Empty;
-			// }
-		// }
-		// EditorGUILayout.EndHorizontal();
 		FunctionSearchText = EditorGUILayout.TextField("関数名検索", FunctionSearchText);
 		var targetMethods = new List<MethodInfo>(CallableMethods);
 		if(string.IsNullOrEmpty(FunctionSearchText) == false)
@@ -55,9 +44,13 @@ public class AnimationEventWindow : EditorWindow
 
 		var animEvents = AnimationUtility.GetAnimationEvents(AnimClip);
 		var animEvent = animEvents[EventIndex];
-		var funcIdx = 0;
+		var funcIdx = -1;
 		if(string.IsNullOrEmpty(animEvent.functionName) == false) funcIdx = targetMethods.FindIndex(method => method.Name == animEvent.functionName);
 		var selectFuncIdx = EditorGUILayout.Popup(funcIdx, targetMethods.Select(method => FormatCallableMethodName(method)).ToArray());
+		if(selectFuncIdx == -1)
+		{
+			selectFuncIdx = targetMethods.Count();
+		}
 		// 関数が変わったら、パラメータ初期化
 		if(funcIdx != selectFuncIdx)
 		{
