@@ -19,12 +19,12 @@ static public class AnimationExtensionData
 	}
 	/// <summary>
 	/// コピー中のイベントを引数のイベントに適用する
-	/// functionname,int,float,stringのみ
 	/// </summary>
 	static public void PasteEventInfo(AnimationEvent toEventInfo)
 	{
 		if(toEventInfo == null) return;
 		toEventInfo.functionName = EventInfoInCopy.functionName;
+		toEventInfo.time = EventInfoInCopy.time;
 		toEventInfo.intParameter = EventInfoInCopy.intParameter;
 		toEventInfo.floatParameter = EventInfoInCopy.floatParameter;
 		toEventInfo.stringParameter = EventInfoInCopy.stringParameter;
@@ -34,6 +34,8 @@ static public class AnimationExtensionData
 public class AnimationClipInfoWindow : EditorWindow
 {
 	Vector2 ScrollPos;
+	AnimationClip TargetClip;
+	AnimationEvent[] TargetEvents;
 
 	[MenuItem("Window/AnimationClip Window")]
 	static void OpenAnimationClipInfoWindow()
@@ -48,12 +50,11 @@ public class AnimationClipInfoWindow : EditorWindow
 
 	void OnGUI()
 	{
-		if(Selection.objects.Length == 0) return;
-		if(Selection.objects.Length >= 2) return;
-		var clip = Selection.objects[0] as AnimationClip;
+		if(TargetClip == null) return;
+		if(TargetEvents == null) return;
 		ScrollPos = EditorGUILayout.BeginScrollView(ScrollPos);
-		ShowAnimationClipEventList(clip);
-		ShowInCopyEventInfo(1/clip.frameRate);
+		ShowAnimationClipEventList(TargetClip);
+		ShowInCopyEventInfo(1/TargetClip.frameRate);
 		EditorGUILayout.EndScrollView();
 	}
 	/// <summary>
@@ -61,22 +62,17 @@ public class AnimationClipInfoWindow : EditorWindow
 	/// </summary>
 	void ShowAnimationClipEventList(AnimationClip clip)
 	{
-		if(clip == null) return;
-
 		var framePerSec = 1 / clip.frameRate;
-		var events = AnimationUtility.GetAnimationEvents(clip);
-		var isDirty = false;
 
 		EditorGUILayout.LabelField("イベントリスト");
 		EditorGUILayout.BeginHorizontal();
 		// 新規イベント追加
 		if(GUILayout.Button("+", GUILayout.Width(20)))
 		{
-			Undo.RecordObject(clip, "add new event info");
-			var eventList = events.ToList();
+			// Undo.RecordObject(clip, "add new event info");
+			var eventList = TargetEvents.ToList();
 			eventList.Add(new AnimationEvent());
-			events = eventList.OrderBy(event_info => event_info.time).ToArray();
-			isDirty = true;
+			TargetEvents = eventList.OrderBy(event_info => event_info.time).ToArray();
 		}
 		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
@@ -87,9 +83,9 @@ public class AnimationClipInfoWindow : EditorWindow
 		EditorGUILayout.LabelField("文字列");
 		EditorGUILayout.EndHorizontal();
 		var deleteIdx = -1;
-		for(var eventIdx = 0; eventIdx < events.Length; ++eventIdx)
+		for(var eventIdx = 0; eventIdx < TargetEvents.Length; ++eventIdx)
 		{
-			var eventInfo = events[eventIdx];
+			var eventInfo = TargetEvents[eventIdx];
 			EditorGUILayout.BeginHorizontal(GUI.skin.box);
 			GUI.color = Color.red;
 			// イベント削除
@@ -103,9 +99,8 @@ public class AnimationClipInfoWindow : EditorWindow
 			{
 				if(AnimationExtensionData.EventInfoInCopy != null)
 				{
-					Undo.RecordObject(clip, "paste event info");
+					// Undo.RecordObject(clip, "paste event info");
 					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
-					isDirty = true;
 				}
 			}
 			// コピー中イベントにする
@@ -120,43 +115,37 @@ public class AnimationClipInfoWindow : EditorWindow
 			if(inputInt != frame)
 			{
 				eventInfo.time = inputInt * framePerSec;
-				// events = events.OrderBy(event_info => event_info.time).ToArray();
-				isDirty = true;
 			}
 			inputInt = EditorGUILayout.IntField(eventInfo.intParameter, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
 			if(inputInt != eventInfo.intParameter)
 			{
 				eventInfo.intParameter = inputInt;
-				isDirty = true;
 			}
 			var inputFloat = EditorGUILayout.FloatField(eventInfo.floatParameter, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
 			if(inputFloat != eventInfo.floatParameter)
 			{
 				eventInfo.floatParameter = inputFloat;
-				isDirty = true;
 			}
 			var inputString = GUILayout.TextField(eventInfo.stringParameter);
 			if(inputString != eventInfo.stringParameter)
 			{
 				eventInfo.stringParameter = inputString;
-				isDirty = true;
 			}
 			EditorGUILayout.EndHorizontal();
 		}
 		if(deleteIdx != -1)
 		{
-			Undo.RecordObject(clip, "delete event info");
-			var eventList = events.ToList();
+			// Undo.RecordObject(clip, "delete event info");
+			var eventList = TargetEvents.ToList();
 			eventList.RemoveAt(deleteIdx);
-			events = eventList.ToArray();
+			TargetEvents = eventList.ToArray();
 			deleteIdx = -1;
-			isDirty = true;
 		}
-		if(isDirty)
+		if(GUILayout.Button("適用", GUILayout.MaxWidth(50)))
 		{
-			events = events.OrderBy(event_info => event_info.time).ToArray();
-			AnimationUtility.SetAnimationEvents(clip, events);
-			isDirty = false;
+			Undo.RecordObject(clip, "apply event info");
+			TargetEvents = TargetEvents.OrderBy(event_info => event_info.time).ToArray();
+			AnimationUtility.SetAnimationEvents(clip, TargetEvents);
 		}
 	}
 	/// <summary>
@@ -167,13 +156,13 @@ public class AnimationClipInfoWindow : EditorWindow
 		if(AnimationExtensionData.EventInfoInCopy != null)
 		{
 			EditorGUILayout.Space();
-			EditorGUILayout.LabelField("コピー中イベント(関数名、整数値、数値(小数点)、文字列置き換え)");
+			EditorGUILayout.LabelField("コピー中イベント");
 			EditorGUILayout.BeginHorizontal(GUI.skin.box);
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
-			EditorGUILayout.LabelField(string.IsNullOrEmpty(AnimationExtensionData.EventInfoInCopy.functionName) ? "(指定なし)" : AnimationExtensionData.EventInfoInCopy.functionName, GUILayout.MaxWidth(200));
-			EditorGUILayout.LabelField(((AnimationExtensionData.EventInfoInCopy.time / framePerSec)+0.5f).ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(string.IsNullOrEmpty(AnimationExtensionData.EventInfoInCopy.functionName) ? "(指定なし)" : AnimationExtensionData.EventInfoInCopy.functionName, GUILayout.MaxWidth(150));
+			EditorGUILayout.LabelField(((int)((AnimationExtensionData.EventInfoInCopy.time / framePerSec)+0.5f)).ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
 			GUILayout.Label(AnimationExtensionData.EventInfoInCopy.stringParameter);
@@ -182,6 +171,12 @@ public class AnimationClipInfoWindow : EditorWindow
 	}
 	void OnSelectionChange()
 	{
+		if(Selection.objects.Length == 0) return;
+		if(Selection.objects.Length >= 2) return;
+		var clip = Selection.objects[0] as AnimationClip;
+		if(clip == null) return;
+		TargetClip = clip;
+		TargetEvents = AnimationUtility.GetAnimationEvents(TargetClip);
 		Repaint();
 	}
 	void OnUndoCallback()
