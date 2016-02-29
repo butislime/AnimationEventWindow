@@ -35,7 +35,7 @@ public class AnimationClipInfoWindow : EditorWindow
 {
 	Vector2 ScrollPos;
 	AnimationClip TargetClip;
-	AnimationEvent[] TargetEvents;
+	[SerializeField] AnimationEvent[] TargetEvents;
 	bool IsDirty = false;
 
 	[MenuItem("Window/AnimationClip Window")]
@@ -70,7 +70,7 @@ public class AnimationClipInfoWindow : EditorWindow
 		// 新規イベント追加
 		if(GUILayout.Button("+", GUILayout.Width(20)))
 		{
-			// Undo.RecordObject(clip, "add new event info");
+			Undo.RecordObject(this, "add new event info");
 			var eventList = TargetEvents.ToList();
 			eventList.Add(new AnimationEvent());
 			TargetEvents = eventList.OrderBy(event_info => event_info.time).ToArray();
@@ -101,7 +101,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			{
 				if(AnimationExtensionData.EventInfoInCopy != null)
 				{
-					// Undo.RecordObject(clip, "paste event info");
+					// Undo.RecordObject(this, "paste event info");
 					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
 					IsDirty = true;
 				}
@@ -118,33 +118,38 @@ public class AnimationClipInfoWindow : EditorWindow
 			if(inputInt != frame)
 			{
 				eventInfo.time = inputInt * framePerSec;
+				IsDirty = true;
 			}
 			inputInt = EditorGUILayout.IntField(eventInfo.intParameter, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
 			if(inputInt != eventInfo.intParameter)
 			{
 				eventInfo.intParameter = inputInt;
+				IsDirty = true;
 			}
 			var inputFloat = EditorGUILayout.FloatField(eventInfo.floatParameter, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
 			if(inputFloat != eventInfo.floatParameter)
 			{
 				eventInfo.floatParameter = inputFloat;
+				IsDirty = true;
 			}
 			var inputString = GUILayout.TextField(eventInfo.stringParameter);
 			if(inputString != eventInfo.stringParameter)
 			{
 				eventInfo.stringParameter = inputString;
+				IsDirty = true;
 			}
 			EditorGUILayout.EndHorizontal();
 		}
 		if(deleteIdx != -1)
 		{
-			// Undo.RecordObject(clip, "delete event info");
+			Undo.RecordObject(this, "delete event info");
 			var eventList = TargetEvents.ToList();
 			eventList.RemoveAt(deleteIdx);
 			TargetEvents = eventList.ToArray();
 			deleteIdx = -1;
 			IsDirty = true;
 		}
+		// 変更時のみボタンを有効に
 		GUI.enabled = IsDirty;
 		if(GUILayout.Button("適用", GUILayout.MaxWidth(50)))
 		{
@@ -188,6 +193,12 @@ public class AnimationClipInfoWindow : EditorWindow
 	}
 	void OnUndoCallback()
 	{
+		Clear();
+		if(Selection.objects.Length == 0 || Selection.objects.Length >= 2) return;
+		var clip = Selection.objects[0] as AnimationClip;
+		if(clip == null) return;
+		TargetClip = clip;
+		TargetEvents = AnimationUtility.GetAnimationEvents(TargetClip);
 		Repaint();
 	}
 	/// <summary>
