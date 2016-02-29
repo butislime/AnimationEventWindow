@@ -101,6 +101,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			{
 				if(AnimationExtensionData.EventInfoInCopy != null)
 				{
+					// Undoされない…
 					// Undo.RecordObject(this, "paste event info");
 					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
 					IsDirty = true;
@@ -110,7 +111,6 @@ public class AnimationClipInfoWindow : EditorWindow
 			if(GUILayout.Button("C", GUILayout.Width(20)))
 			{
 				AnimationExtensionData.CopyEventInfo(fromEventInfo: eventInfo);
-				AnimationExtensionData.EventInfoInCopy = eventInfo;
 			}
 			EditorGUILayout.LabelField(string.IsNullOrEmpty(eventInfo.functionName) ? "(指定なし)" : eventInfo.functionName, GUILayout.MaxWidth(150));
 			var frame = eventInfo.time <= 0.0f ? 0 : (int)((eventInfo.time / framePerSec)+0.5f);
