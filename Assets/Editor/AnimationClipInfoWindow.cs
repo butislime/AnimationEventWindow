@@ -36,6 +36,7 @@ public class AnimationClipInfoWindow : EditorWindow
 	Vector2 ScrollPos;
 	AnimationClip TargetClip;
 	AnimationEvent[] TargetEvents;
+	bool IsDirty = false;
 
 	[MenuItem("Window/AnimationClip Window")]
 	static void OpenAnimationClipInfoWindow()
@@ -73,6 +74,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			var eventList = TargetEvents.ToList();
 			eventList.Add(new AnimationEvent());
 			TargetEvents = eventList.OrderBy(event_info => event_info.time).ToArray();
+			IsDirty = true;
 		}
 		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 		GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
@@ -101,6 +103,7 @@ public class AnimationClipInfoWindow : EditorWindow
 				{
 					// Undo.RecordObject(clip, "paste event info");
 					AnimationExtensionData.PasteEventInfo(toEventInfo: eventInfo);
+					IsDirty = true;
 				}
 			}
 			// コピー中イベントにする
@@ -140,13 +143,17 @@ public class AnimationClipInfoWindow : EditorWindow
 			eventList.RemoveAt(deleteIdx);
 			TargetEvents = eventList.ToArray();
 			deleteIdx = -1;
+			IsDirty = true;
 		}
+		GUI.enabled = IsDirty;
 		if(GUILayout.Button("適用", GUILayout.MaxWidth(50)))
 		{
 			Undo.RecordObject(clip, "apply event info");
 			TargetEvents = TargetEvents.OrderBy(event_info => event_info.time).ToArray();
 			AnimationUtility.SetAnimationEvents(clip, TargetEvents);
+			IsDirty = false;
 		}
+		GUI.enabled = true;
 	}
 	/// <summary>
 	/// コピー中イベント表示
@@ -171,8 +178,8 @@ public class AnimationClipInfoWindow : EditorWindow
 	}
 	void OnSelectionChange()
 	{
-		if(Selection.objects.Length == 0) return;
-		if(Selection.objects.Length >= 2) return;
+		Clear();
+		if(Selection.objects.Length == 0 || Selection.objects.Length >= 2) return;
 		var clip = Selection.objects[0] as AnimationClip;
 		if(clip == null) return;
 		TargetClip = clip;
@@ -182,5 +189,14 @@ public class AnimationClipInfoWindow : EditorWindow
 	void OnUndoCallback()
 	{
 		Repaint();
+	}
+	/// <summary>
+	/// 保持データ初期化
+	/// </summary>
+	void Clear()
+	{
+		TargetClip = null;
+		TargetEvents = null;
+		IsDirty = false;
 	}
 }
