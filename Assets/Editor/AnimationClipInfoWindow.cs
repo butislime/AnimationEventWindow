@@ -61,9 +61,13 @@ public class AnimationClipInfoWindow : EditorWindow
 		if(TargetClip == null) return;
 		if(TargetEvents == null) return;
 		ScrollPos = EditorGUILayout.BeginScrollView(ScrollPos);
+		var framePerSec = 1 / TargetClip.frameRate;
+		EditorGUILayout.LabelField("アニメーション情報");
+		EditorGUILayout.LabelField("フレームレート", TargetClip.frameRate.ToString());
+		EditorGUILayout.LabelField("最大フレーム", ((int)((TargetClip.length / framePerSec)+0.5f)).ToString());
 		ShowAnimationClipEventList(TargetClip);
-		ShowInCopyEventInfo(1/TargetClip.frameRate);
-		ShowCopyHistory(1/TargetClip.frameRate);
+		ShowInCopyEventInfo(framePerSec);
+		ShowCopyHistory(framePerSec);
 		EditorGUILayout.EndScrollView();
 	}
 	/// <summary>
