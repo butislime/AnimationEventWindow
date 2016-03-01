@@ -8,6 +8,8 @@ using System.Linq;
 static public class AnimationExtensionData
 {
 	static public AnimationEvent EventInfoInCopy;
+	static public List<AnimationEvent> EventCopyHistory = new List<AnimationEvent>();
+	static public int HistoryMax = 10;
 
 	/// <summary>
 	/// イベント情報のコピー
@@ -16,6 +18,11 @@ static public class AnimationExtensionData
 	{
 		if(fromEventInfo == null) return;
 		EventInfoInCopy = fromEventInfo;
+		EventCopyHistory.Insert(0, EventInfoInCopy);
+		if(EventCopyHistory.Count > HistoryMax)
+		{
+			EventCopyHistory.RemoveAt(EventCopyHistory.Count-1);
+		}
 	}
 	/// <summary>
 	/// コピー中のイベントを引数のイベントに適用する
@@ -56,6 +63,7 @@ public class AnimationClipInfoWindow : EditorWindow
 		ScrollPos = EditorGUILayout.BeginScrollView(ScrollPos);
 		ShowAnimationClipEventList(TargetClip);
 		ShowInCopyEventInfo(1/TargetClip.frameRate);
+		ShowCopyHistory(1/TargetClip.frameRate);
 		EditorGUILayout.EndScrollView();
 	}
 	/// <summary>
@@ -178,6 +186,33 @@ public class AnimationClipInfoWindow : EditorWindow
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
 			GUILayout.Label(AnimationExtensionData.EventInfoInCopy.stringParameter);
+			EditorGUILayout.EndHorizontal();
+		}
+	}
+	/// <summary>
+	/// コピー履歴表示
+	/// </summary>
+	void ShowCopyHistory(float framePerSec)
+	{
+		if(AnimationExtensionData.EventCopyHistory.Count <= 0) return;
+		EditorGUILayout.Space();
+		EditorGUILayout.LabelField("コピー履歴");
+		for(var eventIdx = 0; eventIdx < AnimationExtensionData.EventCopyHistory.Count; ++eventIdx)
+		{
+			var eventInfo = AnimationExtensionData.EventCopyHistory[eventIdx];
+			EditorGUILayout.BeginHorizontal(GUI.skin.box);
+			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
+			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
+			// コピー中イベントにする
+			if(GUILayout.Button("C", GUILayout.Width(20)))
+			{
+				AnimationExtensionData.CopyEventInfo(fromEventInfo: eventInfo);
+			}
+			EditorGUILayout.LabelField(string.IsNullOrEmpty(eventInfo.functionName) ? "(指定なし)" : eventInfo.functionName, GUILayout.MaxWidth(150));
+			EditorGUILayout.LabelField(((int)((eventInfo.time / framePerSec)+0.5f)).ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(eventInfo.intParameter.ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(eventInfo.floatParameter.ToString(), GUILayout.MaxWidth(100));
+			GUILayout.Label(eventInfo.stringParameter);
 			EditorGUILayout.EndHorizontal();
 		}
 	}
