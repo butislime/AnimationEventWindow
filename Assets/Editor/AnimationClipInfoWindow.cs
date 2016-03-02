@@ -61,21 +61,25 @@ public class AnimationClipInfoWindow : EditorWindow
 		if(TargetClip == null) return;
 		if(TargetEvents == null) return;
 		ScrollPos = EditorGUILayout.BeginScrollView(ScrollPos);
-		var framePerSec = 1 / TargetClip.frameRate;
-		EditorGUILayout.LabelField("アニメーション情報");
-		EditorGUILayout.LabelField("フレームレート", TargetClip.frameRate.ToString());
-		EditorGUILayout.LabelField("最大フレーム", ((int)((TargetClip.length / framePerSec)+0.5f)).ToString());
+		var secPerFrame = 1 / TargetClip.frameRate;
+		ShowAnimationInfomation(TargetClip, secPerFrame);
 		ShowAnimationClipEventList(TargetClip);
-		ShowInCopyEventInfo(framePerSec);
-		ShowCopyHistory(framePerSec);
+		ShowInCopyEventInfo(secPerFrame);
+		ShowCopyHistory(secPerFrame);
 		EditorGUILayout.EndScrollView();
+	}
+	void ShowAnimationInfomation(AnimationClip clip, float secPerFrame)
+	{
+		EditorGUILayout.LabelField("アニメーション情報");
+		EditorGUILayout.LabelField("フレームレート", clip.frameRate.ToString());
+		EditorGUILayout.LabelField("最大フレーム", SecToFrame(clip.length, secPerFrame).ToString());
 	}
 	/// <summary>
 	/// AnimationClipに関連付いているイベント情報一覧表示
 	/// </summary>
 	void ShowAnimationClipEventList(AnimationClip clip)
 	{
-		var framePerSec = 1 / clip.frameRate;
+		var secPerFrame = 1 / clip.frameRate;
 
 		EditorGUILayout.LabelField("イベントリスト");
 		EditorGUILayout.BeginHorizontal();
@@ -125,11 +129,11 @@ public class AnimationClipInfoWindow : EditorWindow
 				AnimationExtensionData.CopyEventInfo(fromEventInfo: eventInfo);
 			}
 			EditorGUILayout.LabelField(string.IsNullOrEmpty(eventInfo.functionName) ? "(指定なし)" : eventInfo.functionName, GUILayout.MaxWidth(150));
-			var frame = eventInfo.time <= 0.0f ? 0 : (int)((eventInfo.time / framePerSec)+0.5f);
+			var frame = eventInfo.time <= 0.0f ? 0 : SecToFrame(eventInfo.time, secPerFrame);
 			var inputInt = EditorGUILayout.IntField(frame, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
 			if(inputInt != frame)
 			{
-				eventInfo.time = inputInt * framePerSec;
+				eventInfo.time = inputInt * secPerFrame;
 				IsDirty = true;
 			}
 			inputInt = EditorGUILayout.IntField(eventInfo.intParameter, GUILayout.MinWidth(100), GUILayout.MaxWidth(100));
@@ -169,13 +173,26 @@ public class AnimationClipInfoWindow : EditorWindow
 			TargetEvents = TargetEvents.OrderBy(event_info => event_info.time).ToArray();
 			AnimationUtility.SetAnimationEvents(clip, TargetEvents);
 			IsDirty = false;
+
+			// 他ウィンドウの再描画を促す
+			var animEventWindows = Resources.FindObjectsOfTypeAll<AnimationEventWindow>();
+			foreach(var window in animEventWindows)
+			{
+				window.Repaint();
+			}
+			var animationWindowType = Types.GetType("UnityEditor.AnimationWindow", "UnityEditor.dll");
+			var animWindows = Resources.FindObjectsOfTypeAll(animationWindowType) as EditorWindow[];
+			foreach(var window in animWindows)
+			{
+				window.Repaint();
+			}
 		}
 		GUI.enabled = true;
 	}
 	/// <summary>
 	/// コピー中イベント表示
 	/// </summary>
-	void ShowInCopyEventInfo(float framePerSec)
+	void ShowInCopyEventInfo(float secPerFrame)
 	{
 		if(AnimationExtensionData.EventInfoInCopy != null)
 		{
@@ -186,7 +203,7 @@ public class AnimationClipInfoWindow : EditorWindow
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 			GUILayout.Button(string.Empty, GUI.skin.label, GUILayout.Width(20));
 			EditorGUILayout.LabelField(string.IsNullOrEmpty(AnimationExtensionData.EventInfoInCopy.functionName) ? "(指定なし)" : AnimationExtensionData.EventInfoInCopy.functionName, GUILayout.MaxWidth(150));
-			EditorGUILayout.LabelField(((int)((AnimationExtensionData.EventInfoInCopy.time / framePerSec)+0.5f)).ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(SecToFrame(AnimationExtensionData.EventInfoInCopy.time, secPerFrame).ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(AnimationExtensionData.EventInfoInCopy.floatParameter.ToString(), GUILayout.MaxWidth(100));
 			GUILayout.Label(AnimationExtensionData.EventInfoInCopy.stringParameter);
@@ -196,7 +213,7 @@ public class AnimationClipInfoWindow : EditorWindow
 	/// <summary>
 	/// コピー履歴表示
 	/// </summary>
-	void ShowCopyHistory(float framePerSec)
+	void ShowCopyHistory(float secPerFrame)
 	{
 		if(AnimationExtensionData.EventCopyHistory.Count <= 0) return;
 		EditorGUILayout.Space();
@@ -213,7 +230,7 @@ public class AnimationClipInfoWindow : EditorWindow
 				AnimationExtensionData.CopyEventInfo(fromEventInfo: eventInfo);
 			}
 			EditorGUILayout.LabelField(string.IsNullOrEmpty(eventInfo.functionName) ? "(指定なし)" : eventInfo.functionName, GUILayout.MaxWidth(150));
-			EditorGUILayout.LabelField(((int)((eventInfo.time / framePerSec)+0.5f)).ToString(), GUILayout.MaxWidth(100));
+			EditorGUILayout.LabelField(SecToFrame(eventInfo.time, secPerFrame).ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(eventInfo.intParameter.ToString(), GUILayout.MaxWidth(100));
 			EditorGUILayout.LabelField(eventInfo.floatParameter.ToString(), GUILayout.MaxWidth(100));
 			GUILayout.Label(eventInfo.stringParameter);
@@ -248,5 +265,13 @@ public class AnimationClipInfoWindow : EditorWindow
 		TargetClip = null;
 		TargetEvents = null;
 		IsDirty = false;
+	}
+
+	/// <summary>
+	/// 秒数からフレーム数変換
+	/// </summary>
+	int SecToFrame(float secTime, float secPerFrame)
+	{
+		return (int)((secTime / secPerFrame)+0.5f);
 	}
 }
